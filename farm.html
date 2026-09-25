@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>FARM SHIFT — 農業ビジネスゲーム</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1e7;color:#263126;font-family:system-ui,-apple-system,sans-serif}
+header{padding:18px 16px 12px;background:#263d2b;color:white;position:sticky;top:0;z-index:5}
+h1{font-size:22px;margin:0}.sub{font-size:11px;opacity:.75;letter-spacing:.12em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px;background:#e6e2d3;position:sticky;top:69px;z-index:4}
+.stat{background:white;border-radius:11px;padding:8px;text-align:center;box-shadow:0 2px 8px #0000000d}.stat b{display:block;font-size:15px}.stat span{font-size:10px;color:#677}
+main{padding:14px;max-width:620px;margin:auto}.card{background:white;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 3px 14px #00000010}
+h2{font-size:17px;margin:0 0 8px}.month{font-weight:800;color:#456b49}.event{background:#fff7d6;border-left:4px solid #d5a62c}
+.actions{display:grid;gap:9px}button{width:100%;border:0;border-radius:13px;padding:13px;text-align:left;background:#edf4ea;color:#203326;font-weight:700;font-size:14px}
+button small{display:block;font-weight:400;color:#667468;margin-top:3px}button:active{transform:scale(.985)}
+#log{font-size:12px;line-height:1.55;max-height:150px;overflow:auto}.bad{color:#a13c31}.good{color:#347044}
+.overlay{position:fixed;inset:0;background:#142118ed;color:white;z-index:10;display:none;align-items:center;justify-content:center;padding:25px}.overlay .box{max-width:460px;text-align:center}.overlay button{text-align:center;margin-top:10px}
+</style></head>
+<body>
+<header><div class="sub">LOCAL AGRI BUSINESS SIMULATOR</div><h1>🌱 FARM SHIFT</h1></header>
+<div class="stats">
+<div class="stat"><span>資金</span><b id="money">50万円</b></div>
+<div class="stat"><span>農家との信頼</span><b id="trust">0</b></div>
+<div class="stat"><span>ブランド</span><b id="brand">0</b></div>
+<div class="stat"><span>顧客</span><b id="fans">0人</b></div>
+<div class="stat"><span>生産力</span><b id="farm">0</b></div>
+<div class="stat"><span>在庫</span><b id="stock">0</b></div>
+</div>
+<main>
+<div class="card"><div class="month" id="month">1年目 4月</div><h2 id="title">あなたは地方へやってきた。</h2><div id="story">農地も顧客もない。あるのは50万円と、Web・ECの知識だけ。3年間で自分なりの「農業」を作ろう。</div></div>
+<div class="card event" id="event"><b>📢 今月の状況</b><div id="eventText">近所のイチジク農家が人手不足らしい。</div></div>
+<div class="card"><h2>今月、何をする？</h2><div class="actions" id="actions"></div></div>
+<div class="card"><h2>これまで</h2><div id="log">ゲーム開始。<br></div></div>
+</main>
+<div class="overlay" id="end"><div class="box"><div class="sub">3 YEARS LATER</div><h1 id="ending"></h1><p id="endingText"></p><button onclick="location.reload()">もう一度経営する</button></div></div>
+<script>
+let s={m:0,money:50,trust:0,brand:0,fans:0,farm:0,stock:0,partners:0,web:false};
+const months=['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+const $=id=>document.getElementById(id);
+const choices=[
+['🤝 農家を手伝う','現場を知り、地域との関係を作る',()=>{s.money-=3;s.trust+=12;s.partners+=Math.random()<.28?1:0}],
+['📱 農家のSNSを無料で手伝う','自分のWebスキルを信頼に変える',()=>{s.money-=2;s.trust+=8;s.brand+=6;s.fans+=25}],
+['🛒 ECサイトを作る','直販できる場所を作る（10万円）',()=>{if(s.money>=10){s.money-=10;s.web=true;s.brand+=10}else fail()}],
+['🌳 自分で栽培を始める','設備・苗に投資して生産力を持つ（15万円）',()=>{if(s.money>=15){s.money-=15;s.farm+=12;s.trust+=3}else fail()}],
+['📦 農家から仕入れて販売','信頼があるほど商品を確保しやすい',()=>{let q=Math.max(2,Math.floor(s.trust/8));s.money-=q*.6;s.stock+=q;s.trust+=2}],
+['📣 SNSで発信する','地域と商品の物語を全国へ',()=>{s.money-=1;s.brand+=5;s.fans+=10+Math.floor(s.brand/3)}],
+['🍯 加工品を試作する','規格外品に新しい価値をつける（8万円）',()=>{if(s.money>=8&&s.trust>=20){s.money-=8;s.brand+=14;s.trust+=4}else fail('信頼20・資金8万円が必要')}],
+['💰 今月は販売に集中','在庫・ブランド・顧客を売上に変える',sell]
+];
+function fail(t='資金が足りない'){window._fail=t}
+function sell(){let demand=Math.max(1,Math.floor((s.fans/30+s.brand/8)*(s.web?1.6:.8)));let sold=Math.min(s.stock,demand);s.stock-=sold;s.money+=sold*2.2;if(s.farm>0){let own=Math.floor(s.farm/6);s.money+=own*1.4}s.brand+=sold>2?2:0}
+const events=[
+['☀️ 好天。イチジクの出来が良い。',()=>{s.stock+=s.farm?3:0}],
+['🌧️ 長雨で収穫量が落ちた。',()=>{s.stock=Math.max(0,s.stock-3)}],
+['📱 投稿が小さくバズった！',()=>{s.fans+=80;s.brand+=8}],
+['👴 高齢農家から「販売を手伝ってくれないか」と相談された。',()=>{if(s.trust>25){s.partners++;s.trust+=7}}],
+['📉 豊作で市場価格が下落。直販の価値が高まる。',()=>{if(s.web)s.brand+=5}],
+['🏪 地元の店から取引の相談が来た。',()=>{if(s.brand>25){s.money+=8;s.trust+=4}}],
+['🍃 静かな月。地道な積み重ねが続く。',()=>{}]
+];
+function render(){
+$('money').textContent=s.money.toFixed(1)+'万円';$('trust').textContent=s.trust;$('brand').textContent=s.brand;$('fans').textContent=s.fans+'人';$('farm').textContent=s.farm;$('stock').textContent=s.stock;
+$('month').textContent=(Math.floor(s.m/12)+1)+'年目 '+months[s.m%12];
+let a=$('actions');a.innerHTML='';
+choices.forEach((c,i)=>{let b=document.createElement('button');b.innerHTML=c[0]+'<small>'+c[1]+'</small>';b.onclick=()=>act(i);a.appendChild(b)})
+}
+function act(i){
+window._fail='';choices[i][2]();if(window._fail){alert(window._fail);return}
+let line=choices[i][0];s.m++;
+if(s.m%3===0){let e=events[Math.floor(Math.random()*events.length)];$('eventText').textContent=e[0];e[1]()}
+if(s.m%2===0&&s.stock>0&&s.fans>20){let auto=Math.min(s.stock,Math.floor(s.fans/80)+(s.web?2:0));s.stock-=auto;s.money+=auto*1.7}
+$('log').innerHTML='▶ '+line+'<br>'+$('log').innerHTML;
+if(s.money<0){finish('資金ショート','挑戦は終わった。でも、どこで資金が減ったかは次の経営判断の材料になる。');return}
+if(s.m>=36){ending();return}render()
+}
+function ending(){
+let name,text;
+if(s.partners>=3&&s.brand>=60){name='地域農業プロデューサー';text='あなたは「全部自分で作る」道を選ばなかった。複数の農家と組み、EC・発信・商品企画を担う地域の販売ハブになった。'}
+else if(s.farm>=30){name='生産者ルート';text='畑への投資を重ね、自ら作る力を磨いた。あなたのブランドの中心には、自分で育てた作物がある。'}
+else if(s.brand>=70){name='農業ブランド経営者';text='生産量よりも、伝え方と売り方を武器にした。地域の商品を全国の顧客へ届けるブランドが育った。'}
+else{name='小さな地域商い';text='派手ではないが、農家との関係と顧客を少しずつ作った。3年はゴールではなく、ようやく土台ができたところだ。'}
+finish(name,text+' 最終資金 '+s.money.toFixed(1)+'万円 / 提携農家 '+s.partners+'軒 / 顧客 '+s.fans+'人')
+}
+function finish(n,t){$('ending').textContent=n;$('endingText').textContent=t;$('end').style.display='flex'}
+render();
+</script></body></html>
