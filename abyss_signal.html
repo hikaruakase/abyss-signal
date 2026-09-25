@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ABYSS SIGNAL</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#02070d;color:#dff7ff;font-family:system-ui,-apple-system,sans-serif}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#hud{position:fixed;inset:0;pointer-events:none;padding:18px;display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 0 10px #62dcff}
+.small{font-size:12px;opacity:.8;letter-spacing:.14em}.big{font-weight:700;font-size:20px}
+#msg{position:fixed;left:50%;top:15%;transform:translateX(-50%);text-align:center;width:90%;pointer-events:none;text-shadow:0 0 12px #6ce6ff}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,#0a2940,#010409 70%);z-index:3}
+.card{width:min(88vw,480px);padding:28px;border:1px solid #1c6780;background:#03111ccc;box-shadow:0 0 50px #001;text-align:center;border-radius:18px}
+button{font:inherit;padding:13px 24px;border-radius:999px;border:1px solid #5de1ff;background:#062a3a;color:#dffaff;font-weight:700}
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"><div><div class="small">DEPTH</div><div class="big"><span id="depth">0</span> m</div></div>
+<div style="text-align:right"><div class="small">SIGNALS</div><div class="big"><span id="score">0</span>/7</div></div></div>
+<div id="msg"></div>
+<div id="start"><div class="card"><div class="small">DEEP SEA EXPEDITION 01</div><h1>ABYSS SIGNAL</h1>
+<p>あなたは深海探査機。<br>7つの発光生命体を回収して、海底へ到達せよ。</p>
+<p class="small">指・マウスで探査機を左右に動かす<br>音あり推奨</p><button id="go">潜航する</button></div></div>
+<script>
+const c=document.querySelector('#c'),x=c.getContext('2d');let W,H,dpr,px,score=0,depth=0,t=0,playing=false,won=false;
+let stars=[],things=[];
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0);px=W/2}
+addEventListener('resize',resize);resize();
+function reset(){stars=Array.from({length:90},()=>({x:Math.random()*W,y:Math.random()*H,s:Math.random()*2+.3}));
+things=Array.from({length:7},(_,i)=>({x:35+Math.random()*(W-70),y:H+120+i*360,r:9+Math.random()*7,got:false,phase:Math.random()*6}));score=0;depth=0;won=false}
+function beep(f=400,d=.08){try{let A=window._ac||(window._ac=new (AudioContext||webkitAudioContext)()),o=A.createOscillator(),g=A.createGain();o.frequency.value=f;o.type='sine';g.gain.setValueAtTime(.08,A.currentTime);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+d);o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+d)}catch(e){}}
+function move(e){if(!playing)return; let q=e.touches?e.touches[0]:e;px=Math.max(24,Math.min(W-24,q.clientX))}
+c.addEventListener('pointermove',move);c.addEventListener('pointerdown',move);c.addEventListener('touchmove',e=>{e.preventDefault();move(e)},{passive:false});
+go.onclick=()=>{start.style.display='none';playing=true;reset();beep(160,.4)};
+function draw(){
+requestAnimationFrame(draw);t+=.016;if(playing&&!won)depth+=.75;
+let grad=x.createLinearGradient(0,0,0,H);grad.addColorStop(0,`rgb(2,${Math.max(8,30-depth/120)},${Math.max(14,48-depth/80)})`);grad.addColorStop(1,'#010308');x.fillStyle=grad;x.fillRect(0,0,W,H);
+for(let s of stars){s.y-=.15+depth/8000;if(s.y<0){s.y=H;s.x=Math.random()*W}x.fillStyle=`rgba(100,210,240,${.12+s.s/12})`;x.fillRect(s.x,s.y,s.s,s.s)}
+if(playing){
+for(let q of things){if(q.got)continue;q.y-=1.15;let glow=12+Math.sin(t*4+q.phase)*4;x.beginPath();x.arc(q.x,q.y,q.r,0,7);x.fillStyle='#8ef6ff';x.shadowBlur=glow;x.shadowColor='#4feaff';x.fill();x.shadowBlur=0;
+for(let k=0;k<5;k++){x.beginPath();x.moveTo(q.x,q.y+q.r);x.quadraticCurveTo(q.x+(k-2)*6,q.y+q.r+14,q.x+(k-2)*9,q.y+q.r+25);x.strokeStyle='#58b7c8';x.stroke()}
+if(Math.hypot(q.x-px,q.y-H*.72)<30){q.got=true;score++;beep(300+score*90,.15);msg.innerHTML=score<7?`SIGNAL ${score} RECOVERED`:'<b>すべての信号を回収した。</b>';setTimeout(()=>{if(score<7)msg.textContent=''},900)}
+if(q.y<-50&&!q.got){q.y=H+300;q.x=35+Math.random()*(W-70)}
+}
+x.save();x.translate(px,H*.72);x.fillStyle='#b9e8ef';x.shadowBlur=15;x.shadowColor='#65dcff';x.beginPath();x.moveTo(0,-18);x.lineTo(16,10);x.lineTo(7,18);x.lineTo(-7,18);x.lineTo(-16,10);x.closePath();x.fill();x.fillStyle='#123846';x.beginPath();x.arc(0,2,5,0,7);x.fill();x.shadowBlur=0;x.restore();
+document.querySelector('#depth').textContent=Math.floor(depth);document.querySelector('#score').textContent=score;
+if(score===7&&depth>2600){won=true;msg.innerHTML=`<div style="font-size:13px;letter-spacing:.18em">SEAFLOOR REACHED</div><div style="font-size:30px;font-weight:800;margin-top:8px">深度 ${Math.floor(depth)}m</div><p>暗闇の底にも、生命はいた。</p><button style="pointer-events:auto" onclick="playing=true;reset();msg.innerHTML=''">もう一度潜る</button>`;beep(120,.8)}
+}}
+draw();
+</script></body></html>
